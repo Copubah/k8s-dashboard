@@ -1,0 +1,6 @@
+resources:
+  - namespace.yaml
+  - secret.yaml
+  - rbac.yaml
+  - backend.yaml
+  - frontend.yaml

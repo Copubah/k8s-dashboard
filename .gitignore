@@ -1,0 +1,5 @@
+backend/k8s-dashboard
+frontend/dist
+frontend/node_modules
+.env
+.DS_Store

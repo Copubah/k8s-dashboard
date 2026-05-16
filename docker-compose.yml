@@ -1,0 +1,29 @@
+services:
+  backend:
+    build:
+      context: ./backend
+    environment:
+      PORT: "8080"
+      KUBECONFIG: ${HOME}/.kube/config
+      KUBE_CONTEXT: minikube
+      IN_CLUSTER: "false"
+      K8S_NAMESPACE: ""
+      DASHBOARD_USERNAME: admin
+      DASHBOARD_PASSWORD: change-me
+      ALLOWED_ORIGIN: http://localhost:5173
+    ports:
+      - "8080:8080"
+    user: "1000:1000"
+    volumes:
+      - ${HOME}/.kube:${HOME}/.kube:ro
+      - ${HOME}/.minikube:${HOME}/.minikube:ro
+
+  frontend:
+    build:
+      context: ./frontend
+      args:
+        VITE_API_URL: http://localhost:8080
+    ports:
+      - "5173:80"
+    depends_on:
+      - backend
