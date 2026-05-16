@@ -1,222 +1,178 @@
 # Kubernetes Deployment Dashboard
 
-A Kubernetes dashboard built with a Go/Gin backend, Kubernetes `client-go`, and a React frontend.
+A Kubernetes dashboard built with a Go/Gin backend, Kubernetes client-go, and a React frontend.
 
-## What It Does
+---
 
-- Lists pods and deployments from your Kubernetes cluster.
-- Shows pod status, restart counts, deployment replica counts, and ready replicas.
-- Lets you view pod logs.
-- Lets you scale deployments.
-- Lets you restart deployments by updating the pod template annotation, the same idea used by `kubectl rollout restart`.
-- Protects the API with HTTP Basic Authentication.
+## Problem
+
+Managing Kubernetes workloads using only kubectl is slow, repetitive, and error-prone, especially when handling multiple services and namespaces.
+
+## Solution
+
+This project provides a web-based Kubernetes dashboard that simplifies cluster operations through a REST API and UI, allowing users to view, manage, and control workloads visually.
+
+---
+
+## Tech Stack
+
+- Backend: Go, Gin
+- Kubernetes: client-go
+- Frontend: React
+- Auth: Basic Authentication
+- Containerization: Docker
+- Cluster: Kubernetes (Minikube / EKS compatible)
+
+---
+
+## Key Features
+
+- Lists pods and deployments from your Kubernetes cluster
+- Displays pod status, restart counts, and deployment replicas
+- View pod logs directly from the UI
+- Scale deployments dynamically
+- Restart deployments using rollout strategy
+- Basic authentication for API access
+
+---
 
 ## Project Structure
 
-```text
-backend/   Go, Gin, client-go REST API
-frontend/  React dashboard UI
-k8s/       Kubernetes manifests and RBAC
-```
+    backend/   Go, Gin, client-go REST API
+    frontend/  React dashboard UI
+    k8s/       Kubernetes manifests and RBAC
+
+---
 
 ## Environment Variables
 
-Backend:
+### Backend
 
-| Name | Default | Meaning |
-| --- | --- | --- |
-| `PORT` | `8080` | API port |
-| `K8S_NAMESPACE` | empty | Namespace to read by default. Empty means all namespaces |
-| `KUBECONFIG` | `$HOME/.kube/config` | Local kubeconfig path |
-| `KUBE_CONTEXT` | empty | Optional kubeconfig context, for example `minikube` |
-| `IN_CLUSTER` | `false` | Use Kubernetes service account credentials inside a pod |
-| `DASHBOARD_USERNAME` | `admin` | Basic auth username |
-| `DASHBOARD_PASSWORD` | `change-me` | Basic auth password |
-| `ALLOWED_ORIGIN` | `http://localhost:5173` | Frontend origin allowed by CORS |
+| Name               | Default               | Description                     |
+|--------------------|-----------------------|---------------------------------|
+| PORT               | 8080                  | API port                        |
+| K8S_NAMESPACE      | empty                 | Default namespace (empty = all) |
+| KUBECONFIG         | $HOME/.kube/config    | Local kubeconfig path           |
+| KUBE_CONTEXT       | empty                 | Kubernetes context              |
+| IN_CLUSTER         | false                 | Use in-cluster service account  |
+| DASHBOARD_USERNAME | admin                 | Basic auth username             |
+| DASHBOARD_PASSWORD | change-me             | Basic auth password             |
+| ALLOWED_ORIGIN     | http://localhost:5173 | Allowed CORS origin             |
 
-Frontend:
+### Frontend
 
-| Name | Default | Meaning |
-| --- | --- | --- |
-| `VITE_API_URL` | `http://localhost:8080` | Backend API base URL |
+| Name         | Default               | Description          |
+|--------------|-----------------------|----------------------|
+| VITE_API_URL | http://localhost:8080 | Backend API base URL |
+
+---
+
+## Architecture
+
+    Frontend -> Go API -> Kubernetes API Server -> Cluster Resources
+
+---
 
 ## Run Locally With Minikube
 
 1. Start Minikube:
 
-```bash
-minikube start
-kubectl config use-context minikube
-```
+        minikube start
+        kubectl config use-context minikube
 
-2. Start the app with Docker Compose:
+2. Start the application:
 
-```bash
-docker compose up --build
-```
+        docker compose up --build
 
-3. Open the dashboard:
+3. Open the dashboard at http://localhost:5173
 
-```text
-http://localhost:5173
-```
+4. Sign in with username admin and password change-me
 
-4. Sign in with:
-
-```text
-username: admin
-password: change-me
-```
-
-The backend reads your local kubeconfig through the Docker Compose volume mount.
-The Compose file also mounts `~/.minikube` because Minikube kubeconfigs usually reference certificate files from that directory.
+---
 
 ## Run Backend Without Docker
 
-```bash
-cd backend
-cp .env.example .env
-go mod download
-PORT=8080 KUBE_CONTEXT=minikube DASHBOARD_PASSWORD=change-me go run ./cmd/server
-```
+    cd backend
+    cp .env.example .env
+    go mod download
+    PORT=8080 KUBE_CONTEXT=minikube DASHBOARD_PASSWORD=change-me go run ./cmd/server
+
+---
 
 ## Run Frontend Without Docker
 
-```bash
-cd frontend
-cp .env.example .env
-npm install
-npm run dev
-```
+    cd frontend
+    cp .env.example .env
+    npm install
+    npm run dev
 
-## Deploy Into Minikube
+---
 
-Build the images inside Minikube's Docker environment:
+## Deploy to Minikube
 
-```bash
-eval $(minikube docker-env)
-docker build -t k8s-dashboard-backend:latest ./backend
-docker build --build-arg VITE_API_URL=http://localhost:8080 -t k8s-dashboard-frontend:latest ./frontend
-kubectl apply -k k8s
-```
+Build images inside Minikube Docker environment:
 
-Port-forward the services:
+    eval $(minikube docker-env)
+    docker build -t k8s-dashboard-backend:latest ./backend
+    docker build --build-arg VITE_API_URL=http://localhost:8080 -t k8s-dashboard-frontend:latest ./frontend
+    kubectl apply -k k8s
 
-```bash
-kubectl -n k8s-dashboard port-forward service/dashboard-backend 8080:8080
-kubectl -n k8s-dashboard port-forward service/dashboard-frontend 5173:80
-```
+Port forward the services:
 
-Then open `http://localhost:5173`.
+    kubectl -n k8s-dashboard port-forward service/dashboard-backend 8080:8080
+    kubectl -n k8s-dashboard port-forward service/dashboard-frontend 5173:80
+
+---
 
 ## API Endpoints
 
-All `/api` endpoints require Basic Auth.
+All endpoints require Basic Auth.
 
 ### List Pods
 
-```http
-GET /api/pods?namespace=default
-```
-
-Sample response:
-
-```json
-[
-  {
-    "name": "nginx-7854ff8877-xk9q2",
-    "namespace": "default",
-    "status": "Running",
-    "node": "minikube",
-    "restarts": 0,
-    "age": "12m30s"
-  }
-]
-```
+    GET /api/pods?namespace=default
 
 ### List Deployments
 
-```http
-GET /api/deployments?namespace=default
-```
-
-Sample response:
-
-```json
-[
-  {
-    "name": "nginx",
-    "namespace": "default",
-    "replicas": 2,
-    "readyReplicas": 2,
-    "availableReplicas": 2,
-    "updatedReplicas": 2,
-    "age": "14m5s"
-  }
-]
-```
+    GET /api/deployments?namespace=default
 
 ### View Pod Logs
 
-```http
-GET /api/pods/default/nginx-7854ff8877-xk9q2/logs?tailLines=100
-```
-
-Sample response:
-
-```json
-{
-  "pod": "nginx-7854ff8877-xk9q2",
-  "namespace": "default",
-  "logs": "10.244.0.1 - - [16/May/2026:10:00:00 +0000] \"GET / HTTP/1.1\" 200 615"
-}
-```
+    GET /api/pods/{namespace}/{pod}/logs?tailLines=100
 
 ### Scale Deployment
 
-```http
-POST /api/deployments/default/nginx/scale
-Content-Type: application/json
-
-{ "replicas": 3 }
-```
-
-Sample response:
-
-```json
-{
-  "name": "nginx",
-  "namespace": "default",
-  "replicas": 3
-}
-```
+    POST /api/deployments/{namespace}/{name}/scale
+    { "replicas": 3 }
 
 ### Restart Deployment
 
-```http
-POST /api/deployments/default/nginx/restart
-```
+    POST /api/deployments/{namespace}/{name}/restart
 
-Sample response:
-
-```json
-{
-  "name": "nginx",
-  "namespace": "default",
-  "restartedAt": "2026-05-16T10:00:00Z"
-}
-```
+---
 
 ## Authentication Notes
 
-This project uses Basic Auth to keep the example easy to understand. For production, use TLS, strong secrets, and an identity provider such as OIDC. Keep Kubernetes RBAC as narrow as your users need.
+This project uses Basic Authentication for simplicity. In production, use TLS encryption, OIDC authentication, and strong RBAC policies.
+
+---
 
 ## Best Practices Included
 
-- Configuration comes from environment variables.
-- Kubernetes access uses `client-go`.
-- In-cluster and local kubeconfig modes are both supported.
-- Kubernetes permissions are declared with RBAC.
-- API errors return JSON with clear messages.
-- Dockerfiles use multi-stage builds.
-- Frontend avoids hard-coded cluster data and talks only to the backend API.
+- Environment-based configuration
+- Kubernetes access via client-go
+- RBAC for cluster security
+- Docker multi-stage builds
+- Separation of frontend and backend
+- Structured API error responses
+
+---
+
+## Future Improvements
+
+- RBAC-based login system
+- Multi-cluster support
+- Live logs with WebSockets
+- Metrics dashboard (CPU/Memory usage)
+- Helm chart deployment
+- Audit logging system
